@@ -1,0 +1,97 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: machine-event-store
+
+  labels:
+    app: machine-event-store
+    version: v1
+spec:
+
+  replicas: 2
+
+  # Deployment strategy
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1        # Maximum number of pods above desired count during update
+      maxUnavailable: 0  # Ensure at least desired count running during update
+
+  # Selector to match pods
+  selector:
+    matchLabels:
+      app: machine-event-store
+
+  # Pod template
+  template:
+    metadata:
+      labels:
+        app: machine-event-store
+        version: v1
+
+
+    spec:
+
+      containers:
+        - name: machine-event-store
+          image: anshulyadav2007/machine-event-store:latest
+          imagePullPolicy: Always
+
+          # Container ports
+          ports:
+            - name: http
+              containerPort: 8081
+              protocol: TCP
+
+          # Environment variables
+          env:
+
+            - name: SPRING_DATA_MONGODB_URI
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-secret
+                  key: mongodb-uri
+
+          # Resource requests and limits
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+
+
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8081
+              scheme: HTTP
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
+
+
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8081
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 5
+            timeoutSeconds: 3
+            successThreshold: 1
+            failureThreshold: 3
+
+          startupProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8081
+              scheme: HTTP
+            initialDelaySeconds: 0
+            periodSeconds: 5
+            timeoutSeconds: 3
+            successThreshold: 1
+            failureThreshold: 30
