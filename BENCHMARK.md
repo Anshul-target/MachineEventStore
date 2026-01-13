@@ -96,6 +96,11 @@
 5. **Scalability** tested up to 20 concurrent threads successfully
 
 ---
+## Prerequisites
+- **Docker**: For test containers
+- **Maven**
+- **Java 21**
+---
 
 ## 📊 Reproduction Instructions
 
@@ -104,9 +109,7 @@
 # Clone repository
 git clone <repository-url>
 cd MachineEventStore
-
-# Configure MongoDB
-export MONGO_DB_PASSWORD=your_password
+open Docker Destop
 
 # Build project
 mvn clean install
