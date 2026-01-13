@@ -50,10 +50,10 @@ public class EventIngestionService {
      * @param eventRequests list of events to process
      * @return BatchIngestionResponse with statistics
      */
+
     public BatchIngestionResponse processBatch(List<EventRequest> eventRequests) {
         log.info("Processing batch of {} events", eventRequests.size());
 
-        // Thread-safe counters using AtomicInteger for accurate counts in concurrent scenarios
         AtomicInteger acceptedCount = new AtomicInteger(0);
         AtomicInteger dedupedCount = new AtomicInteger(0);
         AtomicInteger updatedCount = new AtomicInteger(0);
@@ -61,15 +61,16 @@ public class EventIngestionService {
 
         List<RejectionDetail> rejections = new ArrayList<>();
 
-        // Process each event independently
-        // Each operation is atomic at MongoDB document level
         for (EventRequest request : eventRequests) {
             try {
                 // Step 1: Validate the event
                 eventValidator.validate(request);
 
-                // Step 2: Set receivedTime to server time (override client time)
-                request.setReceivedTime(dateTimeUtil.now());
+                // Step 2: Set receivedTime to server time (only if not already set)
+                // This allows testing of "older event" scenarios
+                if (request.getReceivedTime() == null) {
+                    request.setReceivedTime(dateTimeUtil.now());
+                }
 
                 // Step 3: Process event with atomic operations
                 ProcessResult result = processEvent(request);
@@ -88,7 +89,6 @@ public class EventIngestionService {
                 }
 
             } catch (ValidationException e) {
-                // Validation failed - add to rejections
                 rejectedCount.incrementAndGet();
                 rejections.add(new RejectionDetail(
                         request.getEventId(),
@@ -97,7 +97,6 @@ public class EventIngestionService {
                 ));
                 log.debug("Event {} rejected: {}", request.getEventId(), e.getMessage());
             } catch (Exception e) {
-                // Unexpected error - add to rejections
                 rejectedCount.incrementAndGet();
                 rejections.add(new RejectionDetail(
                         request.getEventId(),
@@ -118,7 +117,6 @@ public class EventIngestionService {
                 .rejections(rejections)
                 .build();
     }
-
     /**
      * Process a single event with atomic operations
      *
